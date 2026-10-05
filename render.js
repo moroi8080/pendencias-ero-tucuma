@@ -163,8 +163,13 @@ async function renderPNG(dados, iconeImg, modo) {
   }
 
   // ---------- topo ----------
-  if (iconeImg){
-    try{ ctx.drawImage(iconeImg, MX, 20, 46, 11); }catch(e){}
+  if (iconeImg && iconeImg.naturalWidth){
+    try{
+      // logo oficial ERO na proporção correta (sem esmagar)
+      const lh = 28;
+      const lw = lh * iconeImg.naturalWidth / iconeImg.naturalHeight;
+      ctx.drawImage(iconeImg, MX, 14, lw, lh);
+    }catch(e){}
   }
   ctx.fillStyle = TEAL_D;
   ctx.font = fonte(15, '700');
@@ -385,14 +390,15 @@ async function renderPNG(dados, iconeImg, modo) {
 
 // ============================================================
 // PDF VETORIAL nativo (jsPDF) — texto real, A4 com margens,
-// quebra de página por linha. Substitui a versão em imagem.
+// logo oficial ERO (proporção 1,525) e grade de espaçamento
+// consistente. Substitui a versão em imagem.
 // ============================================================
 
-const P = {   // geometria A4 em pontos (595.28 x 841.89)
+const P = {
   margem: 42,
-  larg: 595.28 - 84,            // 511.28
-  topo: 52,
-  bandaAlt: 78,
+  larg: 595.28 - 84,     // 511.28
+  bandaTopo: 58,
+  bandaAlt: 92,
   rodapeAlt: 40
 };
 
@@ -400,13 +406,13 @@ function rgbHex(h){ const n=parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&
 // remove caracteres fora do WinAnsi (emoji etc.) para o texto do PDF
 function limparPDF(s){ return String(s==null?'':s).replace(/[^\x20-\x7E -ÿ]/g,'?'); }
 
-function gerarPDF(dados){
+function gerarPDF(dados, logoUrl){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
   const AH = 841.89;
   let y = 0;
   let pag = 1;
-  const limite = () => AH - P.rodapeAlt - 24;
+  const limite = () => AH - P.rodapeAlt - 26;
 
   const teal    = rgbHex('#00727A');
   const tealD   = rgbHex('#00545B');
@@ -416,7 +422,6 @@ function gerarPDF(dados){
   const mut     = rgbHex('#4B5563');
   const corDe   = {verde:rgbHex('#1E9E4F'), amarelo:rgbHex('#E8A33D'), vermelho:rgbHex('#D64545'), azul:rgbHex('#2F7FD1')};
   function cor(ch){ return corDe[ch] || corDe.verde; }
-
   function tintRGB(c, f=0.14){
     return [Math.round(c[0]*f+255*(1-f)), Math.round(c[1]*f+255*(1-f)), Math.round(c[2]*f+255*(1-f))];
   }
@@ -437,61 +442,70 @@ function gerarPDF(dados){
     rodape();
     doc.addPage();
     pag++;
-    y = 26;
+    y = 30;
     doc.setTextColor(...tealD);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(8.5);
-    doc.text('RELATÓRIO DE PENDÊNCIAS — ERO TUCUMÃ', P.margem, y);
+    doc.setFontSize(9);
+    doc.text('RELATÓRIO DE PENDÊNCIAS — ERO TUCUMÃ', P.margem, y + 6);
     doc.setTextColor(...mut);
     doc.setFontSize(7.5);
-    doc.text('PÁGINA ' + pag, 595.28 - P.margem, y, {align:'right'});
-    y += 20;
+    doc.text('PÁGINA ' + pag, 595.28 - P.margem, y + 6, {align:'right'});
+    y += 24;
   }
 
   function cabe(h){ return y + h <= limite(); }
 
-  // ---------- cabeçalho da página 1 ----------
+  // ---------- cabeçalho da página 1 (logo oficial ERO) ----------
+  let lw = 0;
+  if (logoUrl){
+    try{
+      lw = 24 * 1.525;   // proporção do ero_logo_preto.png (366x240)
+      doc.addImage(logoUrl, 'PNG', P.margem, 18, lw, 24);
+    }catch(e){ lw = 0; }
+  }
+  const tx = P.margem + lw + (lw ? 14 : 0);
   doc.setTextColor(...tealD);
   doc.setFont('helvetica','bold');
-  doc.setFontSize(10);
-  doc.text(limparPDF(dados.topo.rotulo1||'ERO TUCUMÃ'), P.margem, 34);
+  doc.setFontSize(12);
+  doc.text(limparPDF(dados.topo.rotulo1||'ERO TUCUMÃ'), tx, 32);
   doc.setTextColor(...mut);
   doc.setFont('helvetica','normal');
-  doc.setFontSize(7.5);
-  doc.text(limparPDF(dados.topo.rotulo2||'SALA DE CONTROLE'), P.margem, 44);
+  doc.setFontSize(8);
+  doc.text(limparPDF(dados.topo.rotulo2||'SALA DE CONTROLE'), tx, 44);
   doc.setFont('helvetica','bold');
+  doc.setFontSize(9);
   doc.setTextColor(...ink);
-  doc.text(limparPDF(dados.topo.data||''), 595.28 - P.margem, 34, {align:'right'});
+  doc.text(limparPDF(dados.topo.data||''), 595.28 - P.margem, 32, {align:'right'});
 
-  // faixa do título
+  // ---------- faixa do título ----------
   doc.setFillColor(...tealD);
-  doc.rect(0, P.topo, 595.28, P.bandaAlt, 'F');
+  doc.rect(0, P.bandaTopo, 595.28, P.bandaAlt, 'F');
   doc.setTextColor(255,255,255);
   doc.setFont('helvetica','bold');
-  doc.setFontSize(21);
-  doc.text(limparPDF(dados.titulo||'RELATÓRIO DE PENDÊNCIAS'), P.margem, P.topo + 38);
+  doc.setFontSize(24);
+  doc.text(limparPDF(dados.titulo||'RELATÓRIO DE PENDÊNCIAS'), P.margem, P.bandaTopo + 50);
   doc.setTextColor(...tealS);
-  doc.setFontSize(10.5);
-  doc.text(limparPDF(dados.subtitulo||''), P.margem, P.topo + 56);
+  doc.setFontSize(11);
+  doc.text(limparPDF(dados.subtitulo||''), P.margem, P.bandaTopo + 72);
   const sem = limparPDF((dados.topo.semana||'') + '  ·  ' + (dados.topo.data||''));
   doc.setFontSize(8.5);
   const sw = doc.getTextWidth(sem);
   doc.setFillColor(255,255,255);
   doc.setGState(new doc.GState({opacity:.16}));
-  doc.roundedRect(595.28 - P.margem - sw - 22, P.topo + 14, sw + 22, 18, 9, 9, 'F');
+  doc.roundedRect(595.28 - P.margem - sw - 24, P.bandaTopo + 18, sw + 24, 22, 11, 11, 'F');
   doc.setGState(new doc.GState({opacity:1}));
   doc.setTextColor(255,255,255);
-  doc.text(sem, 595.28 - P.margem - sw - 11, P.topo + 26);
+  doc.text(sem, 595.28 - P.margem - sw - 12, P.bandaTopo + 32);
 
-  y = P.topo + P.bandaAlt;
+  y = P.bandaTopo + P.bandaAlt + 26;
 
-  // slogan
+  // ---------- slogan ----------
   if (dados.slogan){
     doc.setTextColor(...mut);
     doc.setFont('helvetica','italic');
-    doc.setFontSize(8);
-    doc.text(limparPDF(dados.slogan), 595.28/2, y + 18, {align:'center'});
-    y += 30;
+    doc.setFontSize(8.5);
+    doc.text(limparPDF(dados.slogan), 595.28/2, y + 6, {align:'center'});
+    y += 20;
   }
 
   // ---------- resumo de KPIs ----------
@@ -513,36 +527,36 @@ function gerarPDF(dados){
     const bx = P.margem + i*(bw+10);
     doc.setDrawColor(229,231,235);
     doc.setLineWidth(.8);
-    doc.roundedRect(bx, y, bw, 40, 5, 5, 'S');
+    doc.roundedRect(bx, y, bw, 44, 6, 6, 'S');
     doc.setTextColor(...k.c);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(15);
-    doc.text(String(k.v), bx + 10, y + 21);
+    doc.setFontSize(16);
+    doc.text(String(k.v), bx + 12, y + 26);
     doc.setTextColor(...mut);
     doc.setFontSize(6.5);
-    doc.text(k.lbl, bx + 10, y + 33);
+    doc.text(k.lbl, bx + 12, y + 38);
   });
-  y += 40 + 16;
+  y += 44 + 18;
 
-  // rótulo da seção
+  // ---------- rótulo da seção ----------
   doc.setTextColor(...mut);
   doc.setFont('helvetica','bold');
-  doc.setFontSize(8);
-  doc.text('PENDÊNCIAS POR ÁREA', P.margem, y);
-  y += 12;
+  doc.setFontSize(8.5);
+  doc.text('PENDÊNCIAS POR ÁREA', P.margem, y + 7);
+  y += 16;
 
   // ---------- áreas ----------
   let nGlobal = 0;
   for (const a of (dados.areas||[])){
-    if (!cabe(30)) novaPagina();
+    if (!cabe(38)) novaPagina();
 
     // banda da área
     doc.setFillColor(...tealBg);
-    doc.roundedRect(P.margem, y, P.larg, 26, 4, 4, 'F');
+    doc.roundedRect(P.margem, y, P.larg, 28, 5, 5, 'F');
     doc.setTextColor(...tealD);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(11.5);
-    doc.text(limparPDF(String(a.nome||'').toUpperCase()), P.margem + 10, y + 17.5);
+    doc.setFontSize(12);
+    doc.text(limparPDF(String(a.nome||'').toUpperCase()), P.margem + 12, y + 18.5);
 
     const pend = a.pend||[];
     let ab=0, cc=0, at=0;
@@ -553,18 +567,18 @@ function gerarPDF(dados){
     doc.setFontSize(7.5);
     const rw = doc.getTextWidth(resumo);
     doc.setFillColor(...teal);
-    doc.roundedRect(595.28 - P.margem - rw - 20, y + 3.5, rw + 20, 19, 9.5, 9.5, 'F');
+    doc.roundedRect(595.28 - P.margem - rw - 22, y + 4.5, rw + 22, 19, 9.5, 9.5, 'F');
     doc.setTextColor(255,255,255);
-    doc.text(resumo, 595.28 - P.margem - rw - 10, y + 16);
-    y += 26 + 8;
+    doc.text(resumo, 595.28 - P.margem - rw - 11, y + 17);
+    y += 28 + 10;
 
     if (!pend.length){
-      if (!cabe(20)) novaPagina();
+      if (!cabe(22)) novaPagina();
       doc.setTextColor(...mut);
       doc.setFont('helvetica','italic');
-      doc.setFontSize(8);
+      doc.setFontSize(8.5);
       doc.text('Nenhuma pendência registrada.', P.margem + 4, y + 12);
-      y += 20 + 8;
+      y += 22 + 10;
       continue;
     }
 
@@ -575,48 +589,49 @@ function gerarPDF(dados){
 
       // altura estimada da linha
       doc.setFont('helvetica','bold');
-      doc.setFontSize(10);
-      const refW = ref ? doc.getTextWidth(ref) + 8 : 0;
-      const descLinhas = doc.splitTextToSize(limparPDF(p.desc), P.larg - 24 - refW);
+      doc.setFontSize(10.5);
+      const refW = ref ? doc.getTextWidth(ref) + 10 : 0;
+      const descLinhas = doc.splitTextToSize(limparPDF(p.desc), P.larg - 28 - refW);
       const desc2 = descLinhas.slice(0,2);
+      if (desc2.length===2) desc2[1] = desc2[1].replace(/\s+$/,'') + '…';
       doc.setFont('helvetica','normal');
       doc.setFontSize(8);
-      const obsLinhas = doc.splitTextToSize(limparPDF(p.obs), P.larg - 24);
+      const obsLinhas = doc.splitTextToSize(limparPDF(p.obs), P.larg - 28);
       const obs2 = obsLinhas.slice(0,2);
       if (obs2.length===2) obs2[1] = obs2[1].replace(/\s+$/,'') + '…';
-      const hLinha = 8 + desc2.length*13 + 12 + 4 + obs2.length*10.5 + 12;
+      const hLinha = 2 + desc2.length*14.5 + 13 + 4 + obs2.length*11 + 16;
 
       if (!cabe(hLinha)) novaPagina();
 
-      const rowTop = y + 6;
+      const rowTop = y + 2;
       nGlobal++;
 
       // número
       doc.setFillColor(...teal);
-      doc.circle(P.margem + 7, rowTop + 8, 7, 'F');
+      doc.circle(P.margem + 8, rowTop + 10, 8, 'F');
       doc.setTextColor(255,255,255);
       doc.setFont('helvetica','bold');
-      doc.setFontSize(7);
-      doc.text(String(nGlobal), P.margem + 7, rowTop + 10.5, {align:'center'});
+      doc.setFontSize(7.5);
+      doc.text(String(nGlobal), P.margem + 8, rowTop + 12.7, {align:'center'});
 
       // referência + descrição
-      const dx = P.margem + 22;
+      const dx = P.margem + 24;
       let ddx = dx;
       if (ref){
         doc.setTextColor(...teal);
         doc.setFont('helvetica','bold');
         doc.setFontSize(9.5);
-        doc.text(ref, ddx, rowTop + 10.5);
-        ddx += doc.getTextWidth(ref) + 8;
+        doc.text(ref, ddx, rowTop + 14);
+        ddx += doc.getTextWidth(ref) + 10;
       }
       doc.setTextColor(...(p.status==='concluida' ? mut : ink));
       doc.setFont('helvetica','bold');
-      doc.setFontSize(10);
-      let dy = rowTop + 10.5;
-      for (const l of desc2){ doc.text(l, ddx, dy); dy += 13; }
+      doc.setFontSize(10.5);
+      let dy = rowTop + 14;
+      for (const l of desc2){ doc.text(l, ddx, dy); dy += 14.5; }
 
       // meta + pill de status
-      const metaY = dy + 2;
+      const metaY = dy + 13;
       doc.setFont('helvetica','normal');
       doc.setFontSize(8);
       doc.setTextColor(...mut);
@@ -624,7 +639,7 @@ function gerarPDF(dados){
       if (p.status==='concluida') meta += '   ·   CONCLUÍDA EM ' + isoToBR(p.concluido_em||p.data);
       else if (p.prazo) meta += '   ·   PRAZO ' + isoToBR(p.prazo);
       if (p.resp) meta += '   ·   RESP ' + limparPDF(p.resp);
-      doc.text(meta, dx, metaY + 10);
+      doc.text(meta, dx, metaY);
 
       doc.setFont('helvetica','bold');
       doc.setFontSize(7.5);
@@ -633,26 +648,26 @@ function gerarPDF(dados){
       doc.setFillColor(...t);
       doc.setDrawColor(...stCor);
       doc.setLineWidth(1);
-      doc.roundedRect(595.28 - P.margem - pw - 16, metaY, pw + 16, 15, 7.5, 7.5, 'FD');
+      doc.roundedRect(595.28 - P.margem - pw - 18, metaY - 12, pw + 18, 16, 8, 8, 'FD');
       doc.setTextColor(...stCor);
-      doc.text(st.txt, 595.28 - P.margem - pw - 8, metaY + 10.5);
+      doc.text(st.txt, 595.28 - P.margem - pw - 9, metaY - 1.5);
 
       // observação
-      let oy = metaY + 15 + 6;
+      let oy = metaY + 12;
       if (p.obs){
         doc.setTextColor(...mut);
         doc.setFont('helvetica','normal');
         doc.setFontSize(8);
-        for (const l of obs2){ doc.text(l, dx, oy); oy += 10.5; }
+        for (const l of obs2){ doc.text(l, dx, oy); oy += 11; }
       }
 
-      y = oy + 6;
+      y = oy + 8;
       doc.setDrawColor(31,41,55);
       doc.setGState(new doc.GState({opacity:.08}));
       doc.setLineWidth(.7);
       doc.line(P.margem, y, 595.28 - P.margem, y);
       doc.setGState(new doc.GState({opacity:1}));
-      y += 8;
+      y += 10;
     }
   }
 

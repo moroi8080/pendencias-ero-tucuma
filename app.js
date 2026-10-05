@@ -572,7 +572,7 @@ function renderRelatorios(){
 
 async function gerarPreview(){
   try{
-    const r = await renderPNG(dadosRelatorio(), icone, 'png');
+    const r = await renderPNG(dadosRelatorio(), logoRel, 'png');
     const img = document.getElementById('pv');
     img.src = r.url;
     img.classList.add('show');
@@ -581,7 +581,7 @@ async function gerarPreview(){
 
 async function baixarPNG(){
   try{
-    const r = await renderPNG(dadosRelatorio(), icone, 'png');
+    const r = await renderPNG(dadosRelatorio(), logoRel, 'png');
     const a = document.createElement('a');
     a.href = r.url;
     a.download = 'pendencias_ero_' + isoHoje() + '.png';
@@ -592,7 +592,7 @@ async function baixarPNG(){
 async function baixarPDF(){
   try{
     // PDF vetorial nativo (texto real, A4, quebra por linha) — ver render.js
-    const doc = gerarPDF(dadosRelatorio());
+    const doc = gerarPDF(dadosRelatorio(), await logoDataURL());
     doc.save('pendencias_ero_' + isoHoje() + '.pdf');
   }catch(e){ mostrarErro('Erro ao gerar PDF: ' + e.message); }
 }
@@ -680,12 +680,30 @@ window.addEventListener('error', ev=>{
   }catch(e){}
 });
 
-// ---------- ícone ----------
+// ---------- logos ----------
 (function(){
   const img = new Image();
   img.onload = ()=>{ icone = img; };
   img.src = 'ero_icon.png';
 })();
+let logoRel = null;
+(function(){
+  const img = new Image();
+  img.onload = ()=>{ logoRel = img; };
+  img.src = 'ero_logo_preto.png';
+})();
+// logo oficial como dataURL (para o PDF vetorial) — reduzido, pois
+// no PDF o logo tem ~24pt de altura (~33px); 152px é folga de sobra
+async function logoDataURL(){
+  if (!logoRel || !logoRel.complete || !logoRel.naturalWidth) await new Promise(r=>setTimeout(r, 800));
+  if (!logoRel || !logoRel.naturalWidth) return null;
+  const alvo = 152;
+  const cv = document.createElement('canvas');
+  cv.width = alvo;
+  cv.height = Math.round(alvo * logoRel.naturalHeight / logoRel.naturalWidth);
+  cv.getContext('2d').drawImage(logoRel, 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/png');
+}
 
 // ---------- init ----------
 navegar('painel');
