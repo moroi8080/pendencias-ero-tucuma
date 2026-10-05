@@ -32,6 +32,7 @@
   --warn:#E8A33D;--warn-bg:#FDF4E3;--warn-fg:#9C6A13;
   --bad:#D64545; --bad-bg:#FDEAEA; --bad-fg:#B33232;
   --and:#2F7FD1; --and-bg:#E9F2FB; --and-fg:#1E5C9E;
+  --lar:#C25911; --lar-bg:#FBE9DC; --lar-fg:#9A4A12;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -55,6 +56,7 @@
     --warn:#FBBF24;--warn-bg:rgba(251,191,36,.13);  --warn-fg:#FCD34D;
     --bad:#F87171; --bad-bg:rgba(248,113,113,.13);  --bad-fg:#FCA5A5;
     --and:#60A5FA; --and-bg:rgba(96,165,250,.13);   --and-fg:#93C5FD;
+    --lar:#E0833F; --lar-bg:rgba(224,131,63,.13);   --lar-fg:#F0B17F;
   }
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -142,6 +144,7 @@ textarea{resize:vertical;min-height:64px;}
 .bdg.amarelo{background:var(--warn-bg);color:var(--warn-fg);border-color:var(--warn);}
 .bdg.vermelho{background:var(--bad-bg);color:var(--bad-fg);border-color:var(--bad);}
 .bdg.azul{background:var(--and-bg);color:var(--and-fg);border-color:var(--and);}
+.bdg.laranja{background:var(--lar-bg);color:var(--lar-fg);border-color:var(--lar);}
 .bdg.neutro{background:hsl(var(--secondary));color:hsl(var(--muted-foreground));border-color:hsl(var(--border));}
 
 .stat{
@@ -150,7 +153,7 @@ textarea{resize:vertical;min-height:64px;}
 }
 .stat .lbl{font-size:11.5px;font-weight:700;color:hsl(var(--muted-foreground));text-transform:uppercase;letter-spacing:1px;}
 .stat .num{font-size:26px;font-weight:800;letter-spacing:-.5px;}
-.stat .num.verde{color:var(--ok);}.stat .num.amarelo{color:var(--warn);}.stat .num.vermelho{color:var(--bad);}.stat .num.azul{color:var(--and);}
+.stat .num.verde{color:var(--ok);}.stat .num.amarelo{color:var(--warn);}.stat .num.vermelho{color:var(--bad);}.stat .num.azul{color:var(--and);}.stat .num.laranja{color:var(--lar);}
 
 /* pills por área */
 .pills{display:flex;gap:10px;flex-wrap:wrap;}
@@ -187,6 +190,7 @@ tr:last-child td{border-bottom:0;}
 .pend .dets .t{font-weight:700;font-size:13px;}
 .pend .dets .m{font-size:12px;color:hsl(var(--muted-foreground));margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .pend .area-tag{font-size:10px;font-weight:800;letter-spacing:1px;color:hsl(var(--muted-foreground));text-transform:uppercase;background:hsl(var(--muted));border-radius:4px;padding:1px 6px;}
+.pnumref{font-size:10.5px;font-weight:800;letter-spacing:.4px;color:hsl(var(--primary-foreground));background:hsl(var(--primary));border-radius:4px;padding:1px 6px;}
 
 /* filtros (chips) */
 .filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
@@ -207,6 +211,11 @@ tr:last-child td{border-bottom:0;}
 .pcard.vermelho{border-left-color:var(--bad);}
 .pcard.azul{border-left-color:var(--and);}
 .pcard .prow1{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.pcard .prow1 .pnum{
+  flex:0 0 auto;background:hsl(var(--primary));color:hsl(var(--primary-foreground));
+  border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:800;letter-spacing:.4px;
+}
+.pcard .prow1 input.ptag{flex:0 1 120px;min-width:84px;font-weight:600;margin:0;}
 .pcard .prow1 input{flex:1;font-weight:700;font-size:14px;margin:0;}
 .pcard .pdel{
   background:transparent;border:0;color:hsl(var(--muted-foreground));
@@ -330,7 +339,7 @@ select.p-baixa{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-fg)
 <input type="file" id="imp" accept=".json" style="display:none">
 
 <script src="jspdf.umd.min.js"></script>
-<script src="render.js"></script>
-<script src="app.js?v=1"></script>
+<script src="render.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

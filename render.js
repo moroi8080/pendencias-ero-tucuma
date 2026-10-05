@@ -1,13 +1,15 @@
 // ============================================================
 // Renderizador PNG do Relatório de Pendências
 // Porta do renderizador do FlotaçãoInspect (Canvas API).
+// v2: resumo de KPIs, nº/TAG da pendência, responsável e
+//     data de conclusão (modelos: punch list + backlog).
 // ============================================================
 
 const W = 1080, MX = 48;
 const INK = '#1F2937', MUT = '#4B5563', WHITE = '#FFFFFF';
 const TEAL = '#00727A', TEAL_D = '#00545B', TEAL_SOFT = '#BFF6F0';
 const TEAL_BG = '#EBF4F4', FOOT_SUB = 'rgb(158,198,196)';
-const CORES = { verde: '#1E9E4F', amarelo: '#E8A33D', vermelho: '#D64545', azul: '#2F7FD1' };
+const CORES = { verde: '#1E9E4F', amarelo: '#E8A33D', vermelho: '#D64545', azul: '#2F7FD1', laranja: '#C25911' };
 const FAM = '"Segoe UI", Arial, sans-serif';
 
 function hexRgb(h) {
@@ -58,6 +60,32 @@ function infoStatus(p){
   return {txt:'CONCLUÍDA', cor: CORES.verde};
 }
 
+// texto de referência: BRT-01 CR-002 (prefixo + tag)
+function refTxt(a, p){
+  let t = '';
+  if (a.pref || p.num) t += (a.pref || 'PEN') + '-' + String(p.num || '').padStart(2, '0');
+  if (p.tag) t += (t ? ' ' : '') + p.tag;
+  return t;
+}
+// desenha a referência e devolve o x onde a descrição começa
+function desenharRef(ctx, a, p, x, y){
+  let dx = x;
+  const ref = refTxt(a, p);
+  if (ref){
+    ctx.fillStyle = TEAL;
+    ctx.font = fonte(16, '800');
+    ctx.fillText(ref, dx, y);
+    dx += ctx.measureText(ref).width + 14;
+  }
+  return dx;
+}
+function larguraRef(ctx, a, p){
+  const ref = refTxt(a, p);
+  if (!ref) return 0;
+  ctx.font = fonte(16, '800');
+  return ctx.measureText(ref).width + 14;
+}
+
 // registra as fontes: usa a Segoe UI local se existir (Windows),
 // senão carrega os woff2 bundled (celular/Android).
 async function carregarFontes() {
@@ -81,6 +109,7 @@ function medirAltura(ctx, dados) {
   y += 84;                        // topo
   y += 158;                       // faixa de título
   if (dados.slogan) y += 56;      // slogan
+  y += 66 + 20;                   // resumo de KPIs
   y += 40;                        // rótulo da seção
 
   for (const a of (dados.areas || [])) {
@@ -88,7 +117,8 @@ function medirAltura(ctx, dados) {
     const pend = a.pend || [];
     if (!pend.length){ y += 36; continue; }
     for (const p of pend) {
-      let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - 2 * MX - 38);
+      const dx = MX + 38 + larguraRef(ctx, a, p);
+      let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - MX - dx);
       if (linhas.length > 2) {
         linhas = linhas.slice(0, 2);
         linhas[1] = linhas[1].replace(/\s+$/, '') + '…';
@@ -172,6 +202,38 @@ async function renderPNG(dados, iconeImg) {
     y += 56;
   }
 
+  // ---------- resumo de KPIs ----------
+  let kTot=0, kAb=0, kAtr=0, kConc=0;
+  for (const a of (dados.areas || []))
+    for (const p of (a.pend || [])){
+      kTot++;
+      if (p.status === 'concluida') kConc++; else kAb++;
+      if (atrasada(p)) kAtr++;
+    }
+  const kpis = [
+    {lbl:'TOTAL', v:kTot, cor:INK},
+    {lbl:'ABERTAS', v:kAb, cor:CORES.amarelo},
+    {lbl:'ATRASADAS', v:kAtr, cor:CORES.vermelho},
+    {lbl:'CONCLUÍDAS', v:kConc, cor:CORES.verde}
+  ];
+  const bw = (W - 2 * MX - 3 * 14) / 4;
+  kpis.forEach((k, i)=>{
+    const bx = MX + i * (bw + 14);
+    rr(ctx, bx, y, bw, 66, 10);
+    ctx.fillStyle = WHITE;
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#E5E7EB';
+    ctx.stroke();
+    ctx.fillStyle = k.cor;
+    ctx.font = fonte(26, '800');
+    ctx.fillText(String(k.v), bx + 16, y + 34);
+    ctx.fillStyle = MUT;
+    ctx.font = fonte(11, '800');
+    ctx.fillText(k.lbl, bx + 16, y + 54);
+  });
+  y += 66 + 20;
+
   // ---------- rótulo da seção ----------
   ctx.fillStyle = MUT;
   ctx.font = fonte(13, '800');
@@ -217,7 +279,8 @@ async function renderPNG(dados, iconeImg) {
 
     for (const p of pend){
       const st = infoStatus(p);
-      let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - 2 * MX - 38);
+      const dx = MX + 38 + larguraRef(ctx, a, p);
+      let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - MX - dx);
       if (linhas.length > 2) {
         linhas = linhas.slice(0, 2);
         linhas[1] = linhas[1].replace(/\s+$/, '') + '…';
@@ -242,17 +305,21 @@ async function renderPNG(dados, iconeImg) {
       ctx.fillText(String(nGlobal), MX + 12, rowTop + 18.5);
       ctx.textAlign = 'left';
 
-      // descrição
-      ctx.fillStyle = INK;
+      // referência (BRT-01 CR-002) + descrição
+      const ddx = desenharRef(ctx, a, p, MX + 38, rowTop + 24);
+      ctx.fillStyle = p.status === 'concluida' ? MUT : INK;
       ctx.font = fonte(19, '700');
       let dy = rowTop + 24;
-      for (const l of linhas){ ctx.fillText(l, MX + 38, dy); dy += 24; }
+      for (const l of linhas){ ctx.fillText(l, ddx, dy); dy += 24; }
 
-      // linha meta: data/prazo à esquerda + status à direita
+      // linha meta: data/prazo/resp/conclusão à esquerda + status à direita
       const metaY = dy + 4;
       ctx.fillStyle = MUT;
       ctx.font = fonte(14.5);
-      const meta = 'DATA ' + isoToBR(p.data) + '   ·   PRAZO ' + isoToBR(p.prazo);
+      let meta = 'DATA ' + isoToBR(p.data);
+      if (p.status === 'concluida') meta += '   ·   CONCLUÍDA EM ' + isoToBR(p.concluido_em || p.data);
+      else if (p.prazo) meta += '   ·   PRAZO ' + isoToBR(p.prazo);
+      if (p.resp) meta += '   ·   RESP ' + p.resp;
       ctx.fillText(meta, MX + 38, metaY + 17);
 
       ctx.font = fonte(13, '800');

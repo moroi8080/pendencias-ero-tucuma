@@ -7,30 +7,32 @@
 const CHAVE = 'pendencias_ero_v1';
 
 const AREAS = [
-  {k:'britagem', nome:'BRITAGEM', rotulo:'Britagem'},
-  {k:'moagem',   nome:'MOAGEM',   rotulo:'Moagem'},
-  {k:'flotacao', nome:'FLOTAÇÃO', rotulo:'Flotação'}
+  {k:'britagem', nome:'BRITAGEM', rotulo:'Britagem', pref:'BRT'},
+  {k:'moagem',   nome:'MOAGEM',   rotulo:'Moagem',   pref:'MOA'},
+  {k:'flotacao', nome:'FLOTAÇÃO', rotulo:'Flotação', pref:'FLO'}
 ];
+
+const RESP = ['', 'ELÉTRICA', 'MECÂNICA', 'INSTRUMENTAÇÃO', 'OPERAÇÃO', 'OUTROS'];
 
 const DADOS_PADRAO = {
   areas: {
     britagem: { pend: [
-      {id:'b1', desc:'CR-002 — Desgaste acentuado dos revestimentos (avaliar troca)', data:'2026-09-24', prazo:'2026-10-10', status:'pendente', prio:'alta', obs:'Episódios de material não britável em 22 e 24/09 — inspeção mecânica agendada'},
-      {id:'b2', desc:'CR-003 — Paradas pelo intertravamento (câmara vazia + FE parado + PW baixa)', data:'2026-09-28', prazo:'2026-10-03', status:'andamento', prio:'alta', obs:'Lógica de intertravamento de 20 min em análise com a elétrica'},
-      {id:'b3', desc:'CV-001 — Obstrução recorrente do chute (LSH em projeção)', data:'2026-10-01', prazo:'2026-10-08', status:'pendente', prio:'media', obs:'Limpeza programada para a próxima parada'},
-      {id:'b4', desc:'Peneira — Troca de telas do deck superior', data:'2026-09-30', prazo:'', status:'concluida', prio:'media', obs:'Trocadas em 30/09 — deck normalizado'}
+      {id:'b1', num:1, tag:'CR-002', desc:'Desgaste acentuado dos revestimentos (avaliar troca)', data:'2026-09-24', prazo:'2026-10-10', status:'pendente', prio:'alta', resp:'MECÂNICA', obs:'Episódios de material não britável em 22 e 24/09 — inspeção mecânica agendada', concluido_em:''},
+      {id:'b2', num:2, tag:'CR-003', desc:'Paradas pelo intertravamento (câmara vazia + FE parado + PW baixa)', data:'2026-09-28', prazo:'2026-10-03', status:'andamento', prio:'alta', resp:'ELÉTRICA', obs:'Lógica de intertravamento de 20 min em análise com a elétrica', concluido_em:''},
+      {id:'b3', num:3, tag:'CV-001', desc:'Obstrução recorrente do chute (LSH em projeção)', data:'2026-10-01', prazo:'2026-10-08', status:'pendente', prio:'media', resp:'OPERAÇÃO', obs:'Limpeza programada para a próxima parada', concluido_em:''},
+      {id:'b4', num:4, tag:'PEN-01', desc:'Troca de telas do deck superior', data:'2026-09-30', prazo:'', status:'concluida', prio:'media', resp:'MECÂNICA', obs:'Trocadas em 30/09 — deck normalizado', concluido_em:'2026-09-30'}
     ]},
     moagem: { pend: [
-      {id:'m1', desc:'Moinho — Sensor de nível do silo com leitura intermitente', data:'2026-10-02', prazo:'2026-10-12', status:'pendente', prio:'media', obs:'Verificar com instrumentação'},
-      {id:'m2', desc:'Hidrociclone — Liner desgastado (programar troca)', data:'2026-09-29', prazo:'', status:'andamento', prio:'media', obs:'Sobressalente em estoque — aguardando janela'},
-      {id:'m3', desc:'Bomba de polpa — Vazamento na gaxeta', data:'2026-09-26', prazo:'', status:'concluida', prio:'alta', obs:'Corrigido pela mecânica em 26/09'}
+      {id:'m1', num:1, tag:'MOI-01', desc:'Sensor de nível do silo com leitura intermitente', data:'2026-10-02', prazo:'2026-10-12', status:'pendente', prio:'media', resp:'INSTRUMENTAÇÃO', obs:'Verificar com instrumentação', concluido_em:''},
+      {id:'m2', num:2, tag:'CIC-02', desc:'Liner desgastado (programar troca)', data:'2026-09-29', prazo:'', status:'andamento', prio:'media', resp:'MECÂNICA', obs:'Sobressalente em estoque — aguardando janela', concluido_em:''},
+      {id:'m3', num:3, tag:'BP-05', desc:'Vazamento na gaxeta', data:'2026-09-26', prazo:'', status:'concluida', prio:'alta', resp:'MECÂNICA', obs:'Corrigido pela mecânica em 26/09', concluido_em:'2026-09-26'}
     ]},
     flotacao: { pend: [
-      {id:'f1', desc:'Distribuidores de água danificados (Jameson 01 e 02)', data:'2026-10-03', prazo:'2026-10-15', status:'pendente', prio:'alta', obs:'Aquisição de sobressalentes em andamento'},
-      {id:'f2', desc:'Downcomers sem conexão — 03 no Jameson 01 e 01 no Jameson 02', data:'2026-10-03', prazo:'', status:'pendente', prio:'media', obs:'Aguardando conexões'},
-      {id:'f3', desc:'FC-012 — Preventiva do acoplamento do rotor', data:'2026-09-25', prazo:'2026-10-20', status:'andamento', prio:'media', obs:'Aguardando programação da manutenção'},
-      {id:'f4', desc:'PU-020R — Sucção travada (indisponível)', data:'2026-09-30', prazo:'2026-10-07', status:'pendente', prio:'alta', obs:'Mecânica corretiva ciente'},
-      {id:'f5', desc:'FC-026 — 4230-LCV-0072 Dardo B fora de serviço', data:'2026-09-28', prazo:'', status:'andamento', prio:'alta', obs:'Aguardando peça'}
+      {id:'f1', num:1, tag:'JA-01/02', desc:'Distribuidores de água danificados (Jameson 01 e 02)', data:'2026-10-03', prazo:'2026-10-15', status:'pendente', prio:'alta', resp:'MECÂNICA', obs:'Aquisição de sobressalentes em andamento', concluido_em:''},
+      {id:'f2', num:2, tag:'JA-01/02', desc:'Downcomers sem conexão — 03 no Jameson 01 e 01 no Jameson 02', data:'2026-10-03', prazo:'', status:'pendente', prio:'media', resp:'OPERAÇÃO', obs:'Aguardando conexões', concluido_em:''},
+      {id:'f3', num:3, tag:'FC-012', desc:'Preventiva do acoplamento do rotor', data:'2026-09-25', prazo:'2026-10-20', status:'andamento', prio:'media', resp:'MECÂNICA', obs:'Aguardando programação da manutenção', concluido_em:''},
+      {id:'f4', num:4, tag:'PU-020R', desc:'Sucção travada (indisponível)', data:'2026-09-30', prazo:'2026-10-07', status:'pendente', prio:'alta', resp:'MECÂNICA', obs:'Mecânica corretiva ciente', concluido_em:''},
+      {id:'f5', num:5, tag:'FC-026', desc:'4230-LCV-0072 Dardo B fora de serviço', data:'2026-09-28', prazo:'', status:'andamento', prio:'alta', resp:'INSTRUMENTAÇÃO', obs:'Aguardando peça', concluido_em:''}
     ]}
   }
 };
@@ -44,11 +46,29 @@ const filtros = {britagem:'todas', moagem:'todas', flotacao:'todas'};
 const novaStatus = {britagem:'pendente', moagem:'pendente', flotacao:'pendente'};
 
 function carregar(){
+  let s = null;
   try{
     const v = localStorage.getItem(CHAVE);
-    if (v) return JSON.parse(v);
+    if (v) s = JSON.parse(v);
   }catch(e){}
-  return JSON.parse(JSON.stringify(DADOS_PADRAO));
+  if (!s) s = JSON.parse(JSON.stringify(DADOS_PADRAO));
+  return migrar(s);
+}
+
+// completa pendências antigas com os campos novos (num, tag, resp, concluido_em)
+function migrar(base){
+  for (const a of AREAS){
+    const lista = (base.areas[a.k] && base.areas[a.k].pend) || [];
+    let prox = 1;
+    for (const p of lista){
+      if (!p.num) p.num = prox;
+      if (p.num >= prox) prox = p.num + 1;
+      if (p.tag === undefined) p.tag = '';
+      if (p.resp === undefined) p.resp = '';
+      if (p.concluido_em === undefined) p.concluido_em = (p.status === 'concluida') ? (p.data || '') : '';
+    }
+  }
+  return base;
 }
 
 function salvarLocal(){
@@ -77,6 +97,32 @@ function semanaISO(){
 function pendDe(area){ return S.areas[area].pend; }
 function atrasada(p){ return !!(p.prazo && p.prazo < isoHoje() && p.status !== 'concluida'); }
 
+// idade (aging) desde a data de registro, em dias
+function idadeDias(p){
+  if (!p.data) return 0;
+  const d = new Date(p.data + 'T12:00:00');
+  const h = new Date(isoHoje() + 'T12:00:00');
+  return Math.max(0, Math.round((h - d) / 86400000));
+}
+function idadeInfo(p){
+  if (p.status === 'concluida') return null;
+  const d = idadeDias(p);
+  if (d <= 7) return {txt: d + 'd', cor: 'verde'};
+  if (d <= 15) return {txt: d + 'd', cor: 'amarelo'};
+  if (d <= 30) return {txt: d + 'd', cor: 'laranja'};
+  return {txt: d + 'd', cor: 'vermelho'};
+}
+function numTxt(area, p){
+  const a = AREAS.find(x=>x.k===area);
+  return (a ? a.pref : 'PEN') + '-' + String(p.num || 0).padStart(2, '0');
+}
+function noPrazo(p){
+  // concluída dentro do prazo (ou sem prazo definido conta como no prazo)
+  if (p.status !== 'concluida') return null;
+  if (!p.prazo) return true;
+  return (p.concluido_em || p.data) <= p.prazo;
+}
+
 function infoStatus(p){
   if (atrasada(p)) return {txt:'FORA DO PRAZO', cor:'vermelho'};
   if (p.status === 'pendente') return {txt:'PENDENTE', cor:'amarelo'};
@@ -95,7 +141,7 @@ function ordenarPend(lista){
 }
 
 function badge(cor, txt){
-  const mapa = {verde:'verde', amarelo:'amarelo', vermelho:'vermelho', azul:'azul'};
+  const mapa = {verde:'verde', amarelo:'amarelo', vermelho:'vermelho', azul:'azul', laranja:'laranja'};
   return `<span class="bdg ${mapa[cor]||'neutro'}"><span class="dot"></span>${esc(txt)}</span>`;
 }
 
@@ -127,9 +173,15 @@ document.addEventListener('click', e=>{
   if (seg){
     const card = seg.closest('.pcard');
     const p = pendDe(card.dataset.area).find(x=>x.id===card.dataset.id);
-    if (p){ p.status = seg.dataset.val; agendarSalvar(); }
-    card.querySelectorAll('.segbtn').forEach(b=>b.classList.toggle('on', b===seg));
-    atualizarCardVisual(card);
+    if (p){
+      const antes = p.status;
+      p.status = seg.dataset.val;
+      // data de conclusão automática (modelo: data de sanação registrada)
+      if (seg.dataset.val === 'concluida' && antes !== 'concluida') p.concluido_em = isoHoje();
+      if (seg.dataset.val !== 'concluida' && antes === 'concluida') p.concluido_em = '';
+      agendarSalvar();
+    }
+    renderArea(card.dataset.area);
     return;
   }
   const nseg = e.target.closest('#nf-status .segbtn');
@@ -169,23 +221,29 @@ document.addEventListener('change', e=>{
   if (!p) return;
   p[sel.dataset.campo] = sel.value;
   agendarSalvar();
-  sel.className = 'sel-prio p-' + sel.value;
+  if (sel.dataset.campo === 'prio') sel.className = 'sel-prio p-' + sel.value;
 });
 
 // ---------- PAINEL ----------
 function renderPainel(){
-  let tot=0, pend=0, and=0, conc=0, atr=0;
+  let tot=0, pend=0, and=0, conc=0, atr=0, np=0, npTot=0;
+  const faixas = {f7:0, f15:0, f30:0, f30p:0};
   const porArea = {};
   for (const a of AREAS){
     const lista = pendDe(a.k);
     let ab=0, c=0, at=0;
     for (const p of lista){
       tot++;
-      if (p.status==='concluida'){ c++; conc++; }
-      else {
+      if (p.status==='concluida'){
+        c++; conc++;
+        const r = noPrazo(p);
+        if (r !== null){ npTot++; if (r) np++; }
+      } else {
         ab++;
         if (p.status==='pendente') pend++; else and++;
         if (atrasada(p)) atr++;
+        const d = idadeDias(p);
+        if (d<=7) faixas.f7++; else if (d<=15) faixas.f15++; else if (d<=30) faixas.f30++; else faixas.f30p++;
       }
       if (atrasada(p)) at++;
     }
@@ -198,6 +256,14 @@ function renderPainel(){
     <div class="stat"><div class="lbl">Em andamento</div><div class="num azul">${and}</div></div>
     <div class="stat"><div class="lbl">Concluídas</div><div class="num verde">${conc}</div></div>
     <div class="stat"><div class="lbl">Atrasadas</div><div class="num vermelho">${atr}</div></div>
+    <div class="stat"><div class="lbl">Concl. no prazo</div><div class="num verde">${npTot ? np+'/'+npTot : '—'}</div></div>
+  </div>`;
+
+  const aging = `<div class="grid g4">
+    <div class="stat"><div class="lbl">0–7 dias</div><div class="num verde">${faixas.f7}</div></div>
+    <div class="stat"><div class="lbl">8–15 dias</div><div class="num amarelo">${faixas.f15}</div></div>
+    <div class="stat"><div class="lbl">16–30 dias</div><div class="num laranja">${faixas.f30}</div></div>
+    <div class="stat"><div class="lbl">30+ dias (crítico)</div><div class="num vermelho">${faixas.f30p}</div></div>
   </div>`;
 
   const pills = AREAS.map(a=>{
@@ -219,11 +285,12 @@ function renderPainel(){
   const lista = abertas.length
     ? abertas.map((x,i)=>{
         const st = infoStatus(x.p);
+        const id = idadeInfo(x.p);
         return `<div class="pend" data-area="${x.area}" style="cursor:pointer">
           <div class="n">${i+1}</div>
           <div class="dets">
-            <div class="t"><span class="area-tag">${x.nome}</span> ${esc(x.p.desc)}</div>
-            <div class="m">${badge(st.cor, st.txt)} <span>Data: ${isoToBR(x.p.data)}</span>${x.p.prazo?` <span>Prazo: ${isoToBR(x.p.prazo)}</span>`:''}</div>
+            <div class="t"><span class="area-tag">${x.nome}</span> <span class="pnumref">${numTxt(x.area, x.p)}</span> ${x.p.tag? '<b>'+esc(x.p.tag)+'</b> — ':''}${esc(x.p.desc)}</div>
+            <div class="m">${badge(st.cor, st.txt)} ${id? badge(id.cor, id.txt):''} <span>Data: ${isoToBR(x.p.data)}</span>${x.p.prazo?` <span>Prazo: ${isoToBR(x.p.prazo)}</span>`:''}${x.p.resp?` <span>Resp: ${esc(x.p.resp)}</span>`:''}</div>
           </div>
         </div>`;
       }).join('')
@@ -231,6 +298,7 @@ function renderPainel(){
 
   document.getElementById('pnl').innerHTML = `
     ${stats}
+    <div class="card"><h2>Idade das pendências abertas (aging)</h2>${aging}</div>
     <div class="card"><h2>Por área</h2><div class="pills">${pills}</div></div>
     <div class="card"><h2>Pendências em aberto</h2>${lista}</div>`;
 }
@@ -242,11 +310,19 @@ function renderArea(k){
   const form = `<div class="card">
     <h2>Nova pendência — ${a.nome}</h2>
     <div class="prow1" style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="text" id="nf-desc" placeholder="Descrição / equipamento..." style="flex:1;font-weight:700;font-size:14px;">
+      <input type="text" id="nf-desc" placeholder="Descrição da pendência..." style="flex:1;font-weight:700;font-size:14px;">
     </div>
     <div class="prow2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <label>Data<input type="date" id="nf-data" value="${isoHoje()}"></label>
       <label>Prazo (opcional)<input type="date" id="nf-prazo"></label>
+    </div>
+    <div class="prow2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <label>Equipamento / TAG<input type="text" id="nf-tag" placeholder="ex.: CR-002"></label>
+      <label>Responsável
+        <select id="nf-resp">
+          ${RESP.map(r=>`<option value="${r}" ${r===''?'selected':''}>${r||'— (sem responsável)'}</option>`).join('')}
+        </select>
+      </label>
     </div>
     <label style="margin-bottom:6px;">Status</label>
     <div class="seg" id="nf-status" style="margin-bottom:10px;">
@@ -254,16 +330,14 @@ function renderArea(k){
       <button class="segbtn azul ${novaStatus[k]==='andamento'?'on':''}" data-val="andamento">EM ANDAMENTO</button>
       <button class="segbtn verde ${novaStatus[k]==='concluida'?'on':''}" data-val="concluida">CONCLUÍDA</button>
     </div>
-    <div class="prow2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <label>Prioridade
-        <select id="nf-prio">
-          <option value="alta">ALTA</option>
-          <option value="media" selected>MÉDIA</option>
-          <option value="baixa">BAIXA</option>
-        </select>
-      </label>
-    </div>
-    <label>Observação<textarea id="nf-obs" placeholder="Detalhes, andamento, responsável..."></textarea></label>
+    <label>Prioridade
+      <select id="nf-prio" style="max-width:220px;">
+        <option value="alta">ALTA</option>
+        <option value="media" selected>MÉDIA</option>
+        <option value="baixa">BAIXA</option>
+      </select>
+    </label>
+    <label style="margin-top:10px;">Observação<textarea id="nf-obs" placeholder="Detalhes, andamento, responsável..."></textarea></label>
     <div class="btnrow" style="margin-top:10px;">
       <button class="btn prim" onclick="addPend('${k}')">➕ Adicionar pendência</button>
     </div>
@@ -300,13 +374,24 @@ function renderArea(k){
 
 function cardHTML(k, p){
   const st = infoStatus(p);
+  const id = idadeInfo(p);
+  const idadeBadge = (p.status === 'concluida')
+    ? badge('verde', 'CONCLUÍDA EM ' + isoToBR(p.concluido_em || p.data))
+    : (id ? badge(id.cor, id.txt) : badge('verde', 'HOJE'));
+  const respOpts = RESP.map(r=>`<option value="${r}" ${p.resp===r?'selected':''}>${r||'RESPONSÁVEL: —'}</option>`).join('');
   return `<div class="pcard ${st.cor}" data-area="${k}" data-id="${p.id}">
     <div class="prow1">
-      <input type="text" data-campo="desc" value="${esc(p.desc)}" placeholder="Descrição / equipamento...">
+      <span class="pnum">${numTxt(k, p)}</span>
+      <input type="text" class="ptag" data-campo="tag" value="${esc(p.tag)}" placeholder="TAG...">
+      <input type="text" data-campo="desc" value="${esc(p.desc)}" placeholder="Descrição da pendência...">
       <button class="pdel" title="Excluir pendência">✕</button>
     </div>
     <div class="meta">
-      ${badge(st.cor, st.txt)}
+      <span class="pstatus">${badge(st.cor, st.txt)}</span>
+      <span class="pidade">${idadeBadge}</span>
+      <select data-campo="resp" style="width:auto;flex:0 0 auto;margin:0;font-weight:600;">
+        ${respOpts}
+      </select>
       <select data-campo="prio" class="sel-prio p-${p.prio}" style="width:auto;flex:0 0 auto;margin:0;font-weight:700;">
         <option value="alta" ${p.prio==='alta'?'selected':''}>PRIORIDADE ALTA</option>
         <option value="media" ${p.prio==='media'?'selected':''}>PRIORIDADE MÉDIA</option>
@@ -317,6 +402,7 @@ function cardHTML(k, p){
       <label><span>Data</span><input type="date" data-campo="data" value="${esc(p.data)}"></label>
       <label><span>Prazo</span><input type="date" data-campo="prazo" value="${esc(p.prazo)}"></label>
     </div>
+    ${p.status==='concluida' ? `<label style="max-width:220px;"><span>Concluída em</span><input type="date" data-campo="concluido_em" value="${esc(p.concluido_em)}"></label>` : ''}
     <div class="seg" style="margin-bottom:8px;">
       <button class="segbtn amarelo ${p.status==='pendente'?'on':''}" data-val="pendente">PENDENTE</button>
       <button class="segbtn azul ${p.status==='andamento'?'on':''}" data-val="andamento">EM ANDAMENTO</button>
@@ -331,8 +417,15 @@ function atualizarCardVisual(card){
   if (!p) return;
   const st = infoStatus(p);
   card.className = 'pcard ' + st.cor;
-  const b = card.querySelector('.bdg');
+  const b = card.querySelector('.bdg.pstatus, .pstatus .bdg');
   if (b) b.outerHTML = badge(st.cor, st.txt);
+  const age = card.querySelector('.pidade');
+  if (age){
+    const id = idadeInfo(p);
+    age.innerHTML = (p.status === 'concluida')
+      ? badge('verde', 'CONCLUÍDA EM ' + isoToBR(p.concluido_em || p.data))
+      : (id ? badge(id.cor, id.txt) : badge('verde', 'HOJE'));
+  }
   card.querySelectorAll('.segbtn').forEach(x=>x.classList.toggle('on', x.dataset.val===p.status));
 }
 
@@ -341,11 +434,17 @@ function addPend(k){
   if (!desc){ alert('Descreva a pendência antes de adicionar.'); return; }
   const data = document.getElementById('nf-data').value || isoHoje();
   const prazo = document.getElementById('nf-prazo').value;
+  const tag = document.getElementById('nf-tag').value.trim();
+  const resp = document.getElementById('nf-resp').value;
   const prio = document.getElementById('nf-prio').value;
   const obs = document.getElementById('nf-obs').value.trim();
-  pendDe(k).push({
+  const lista = pendDe(k);
+  const num = lista.reduce((m,p)=>Math.max(m, p.num||0), 0) + 1;
+  const status = novaStatus[k];
+  lista.push({
     id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    desc, data, prazo, status: novaStatus[k], prio, obs
+    num, tag, desc, data, prazo, status, prio, resp, obs,
+    concluido_em: status === 'concluida' ? data : ''
   });
   salvarLocal();
   renderArea(k);
@@ -365,7 +464,7 @@ function dadosRelatorio(){
     titulo: 'RELATÓRIO DE PENDÊNCIAS',
     subtitulo: 'BRITAGEM · MOAGEM · FLOTAÇÃO',
     slogan: 'Trabalhamos com o comprometimento de todos para uma operação segura, produtiva e dentro do prazo.',
-    areas: AREAS.map(a=>({nome:a.nome, pend:ordenarPend(pendDe(a.k))})),
+    areas: AREAS.map(a=>({nome:a.nome, pref:a.pref, pend:ordenarPend(pendDe(a.k))})),
     rodape1: 'SEGURANÇA  ·  QUALIDADE  ·  PRODUÇÃO',
     rodape2: 'O VERDE NOS PERTENCE'
   };
@@ -464,7 +563,7 @@ document.getElementById('imp').addEventListener('change', function(){
       const d = JSON.parse(r.result);
       if (!d.areas || !d.areas.britagem || !d.areas.moagem || !d.areas.flotacao) throw new Error('formato');
       if (!confirm('Substituir os dados atuais pelos do arquivo?')) return;
-      S = d;
+      S = migrar(d);
       salvarLocal();
       renderPagina();
     }catch(e){ alert('Arquivo inválido — use um JSON exportado por este app.'); }
