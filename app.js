@@ -95,6 +95,9 @@ function semanaISO(){
 }
 
 function pendDe(area){ return S.areas[area].pend; }
+// contêiner da página da área (as páginas ficam no DOM escondidas —
+// buscas por id precisam ser escopadas, senão pegam a área errada)
+function contArea(k){ return document.getElementById({britagem:'brt',moagem:'moa',flotacao:'flo'}[k]); }
 function atrasada(p){ return !!(p.prazo && p.prazo < isoHoje() && p.status !== 'concluida'); }
 
 // idade (aging) desde a data de registro, em dias
@@ -186,7 +189,7 @@ document.addEventListener('click', e=>{
   }
   const nseg = e.target.closest('#nf-status .segbtn');
   if (nseg){
-    document.querySelectorAll('#nf-status .segbtn').forEach(b=>b.classList.toggle('on', b===nseg));
+    contArea(pagina).querySelectorAll('#nf-status .segbtn').forEach(b=>b.classList.toggle('on', b===nseg));
     novaStatus[pagina] = nseg.dataset.val;
     return;
   }
@@ -203,7 +206,8 @@ document.addEventListener('click', e=>{
 document.addEventListener('input', e=>{
   // limpa a mensagem de erro do formulário quando volta a digitar na descrição
   if (e.target && e.target.id === 'nf-desc'){
-    const msg = document.getElementById('nf-msg');
+    const pg = e.target.closest('.page');
+    const msg = pg && pg.querySelector('#nf-msg');
     if (msg){ msg.style.display = 'none'; }
     e.target.style.outline = '';
   }
@@ -444,12 +448,13 @@ function atualizarCardVisual(card){
 }
 
 function addPend(k){
-  const inpDesc = document.getElementById('nf-desc');
+  const cont = contArea(k);
+  const inpDesc = cont.querySelector('#nf-desc');
   const desc = inpDesc.value.trim();
-  const tag = document.getElementById('nf-tag').value.trim();
-  const obs = document.getElementById('nf-obs').value.trim();
+  const tag = cont.querySelector('#nf-tag').value.trim();
+  const obs = cont.querySelector('#nf-obs').value.trim();
   if (!desc){
-    const msg = document.getElementById('nf-msg');
+    const msg = cont.querySelector('#nf-msg');
     msg.style.display = '';
     msg.textContent = (tag || obs)
       ? 'Falta a DESCRIÇÃO no primeiro campo ("O QUE ESTÁ PENDENTE"). O que você digitou em TAG/Observação não conta como descrição — copie para o primeiro campo.'
@@ -458,10 +463,10 @@ function addPend(k){
     inpDesc.focus();
     return;
   }
-  const data = document.getElementById('nf-data').value || isoHoje();
-  const prazo = document.getElementById('nf-prazo').value;
-  const resp = document.getElementById('nf-resp').value;
-  const prio = document.getElementById('nf-prio').value;
+  const data = cont.querySelector('#nf-data').value || isoHoje();
+  const prazo = cont.querySelector('#nf-prazo').value;
+  const resp = cont.querySelector('#nf-resp').value;
+  const prio = cont.querySelector('#nf-prio').value;
   const lista = pendDe(k);
   const num = lista.reduce((m,p)=>Math.max(m, p.num||0), 0) + 1;
   const status = novaStatus[k];
