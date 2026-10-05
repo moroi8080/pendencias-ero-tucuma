@@ -1,11 +1,15 @@
 // ============================================================
-// Renderizador PNG do Relatório de Pendências
-// Porta do renderizador do FlotaçãoInspect (Canvas API).
-// v2: resumo de KPIs, nº/TAG da pendência, responsável e
-//     data de conclusão (modelos: punch list + backlog).
+// Renderizador do Relatório de Pendências (Canvas API)
+// Porta do renderizador do FlotaçãoInspect.
+// v3: dois modos —
+//   'png'  contínuo (para WhatsApp/preview)
+//   'pdf'  paginado em A4 (quebra por linha, sem cortar texto)
 // ============================================================
 
 const W = 1080, MX = 48;
+const PAGE_H = 1528;   // proporção A4 (1080 * 297/210)
+const RODAPE_H = 116;
+const CONT_H = 46;     // cabeçalho das páginas de continuação
 const INK = '#1F2937', MUT = '#4B5563', WHITE = '#FFFFFF';
 const TEAL = '#00727A', TEAL_D = '#00545B', TEAL_SOFT = '#BFF6F0';
 const TEAL_BG = '#EBF4F4', FOOT_SUB = 'rgb(158,198,196)';
@@ -67,7 +71,12 @@ function refTxt(a, p){
   if (p.tag) t += (t ? ' ' : '') + p.tag;
   return t;
 }
-// desenha a referência e devolve o x onde a descrição começa
+function larguraRef(ctx, a, p){
+  const ref = refTxt(a, p);
+  if (!ref) return 0;
+  ctx.font = fonte(16, '800');
+  return ctx.measureText(ref).width + 14;
+}
 function desenharRef(ctx, a, p, x, y){
   let dx = x;
   const ref = refTxt(a, p);
@@ -79,11 +88,15 @@ function desenharRef(ctx, a, p, x, y){
   }
   return dx;
 }
-function larguraRef(ctx, a, p){
-  const ref = refTxt(a, p);
-  if (!ref) return 0;
-  ctx.font = fonte(16, '800');
-  return ctx.measureText(ref).width + 14;
+
+// altura de uma linha de pendência (medida, para a quebra de página)
+function alturaLinha(ctx, a, p){
+  const dx = MX + 38 + larguraRef(ctx, a, p);
+  let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - MX - dx);
+  if (linhas.length > 2) linhas = linhas.slice(0, 2);
+  let obsLinhas = wrap(ctx, p.obs, fonte(16.5), W - 2 * MX - 8);
+  if (obsLinhas.length > 2) obsLinhas = obsLinhas.slice(0, 2);
+  return 6 + linhas.length * 24 + 26 + 4 + obsLinhas.length * 22 + 14;
 }
 
 // registra as fontes: usa a Segoe UI local se existir (Windows),
@@ -104,60 +117,54 @@ async function carregarFontes() {
   await document.fonts.ready;
 }
 
-function medirAltura(ctx, dados) {
-  let y = 0;
-  y += 84;                        // topo
-  y += 158;                       // faixa de título
-  if (dados.slogan) y += 56;      // slogan
-  y += 66 + 20;                   // resumo de KPIs
-  y += 40;                        // rótulo da seção
-
-  for (const a of (dados.areas || [])) {
-    y += 44 + 10;                 // banda da área
-    const pend = a.pend || [];
-    if (!pend.length){ y += 36; continue; }
-    for (const p of pend) {
-      const dx = MX + 38 + larguraRef(ctx, a, p);
-      let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - MX - dx);
-      if (linhas.length > 2) {
-        linhas = linhas.slice(0, 2);
-        linhas[1] = linhas[1].replace(/\s+$/, '') + '…';
-      }
-      let obsLinhas = wrap(ctx, p.obs, fonte(16.5), W - 2 * MX - 8);
-      if (obsLinhas.length > 2) {
-        obsLinhas = obsLinhas.slice(0, 2);
-        obsLinhas[1] = obsLinhas[1].replace(/\s+$/, '') + '…';
-      }
-      y += 6 + linhas.length * 24 + 26 + 4 + obsLinhas.length * 22 + 14;
-    }
-    y += 6;
-  }
-
-  y += 116;                        // rodapé
-  return y;
+function rodape(ctx, dados, yBase){
+  ctx.fillStyle = TEAL_D;
+  ctx.fillRect(0, yBase, W, RODAPE_H);
+  ctx.fillStyle = WHITE;
+  ctx.font = fonte(21, '800');
+  ctx.textAlign = 'center';
+  ctx.fillText(String(dados.rodape1 || ''), W / 2, yBase + 52);
+  ctx.fillStyle = FOOT_SUB;
+  ctx.font = fonte(15, '700');
+  ctx.fillText(String(dados.rodape2 || ''), W / 2, yBase + 82);
+  ctx.textAlign = 'left';
 }
 
-async function renderPNG(dados, iconeImg) {
+async function renderPNG(dados, iconeImg, modo) {
+  modo = modo || 'png'; // 'png' contínuo | 'pdf' paginado A4
   await carregarFontes();
-  const ctx0 = document.createElement('canvas').getContext('2d');
-  const H = medirAltura(ctx0, dados);
-  const cv = document.createElement('canvas');
-  const ctx = cv.getContext('2d');
-  cv.width = W;
-  cv.height = H;
 
-  // fundo branco explícito (senão o PNG sai transparente e vira preto nos visualizadores)
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = 12000; // teto generoso; recortado no final
+  const ctx = cv.getContext('2d');
   ctx.fillStyle = WHITE;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, 12000);
   ctx.textBaseline = 'alphabetic';
 
   let y = 0;
+  let pag = 1;
+  const limite = () => (modo === 'pdf') ? pag * PAGE_H - RODAPE_H : Infinity;
+  const cabe = (h) => y + h <= limite();
+  function novaPagina(){
+    if (modo !== 'pdf') return;
+    rodape(ctx, dados, pag * PAGE_H - RODAPE_H);
+    pag++;
+    y = (pag - 1) * PAGE_H;
+    ctx.fillStyle = TEAL_D;
+    ctx.font = fonte(13, '800');
+    ctx.fillText('RELATÓRIO DE PENDÊNCIAS — ERO TUCUMÃ', MX, y + 28);
+    ctx.fillStyle = MUT;
+    ctx.font = fonte(12, '700');
+    ctx.textAlign = 'right';
+    ctx.fillText('PÁGINA ' + pag, W - MX, y + 28);
+    ctx.textAlign = 'left';
+    y += CONT_H;
+  }
 
   // ---------- topo ----------
   if (iconeImg){
-    try{
-      ctx.drawImage(iconeImg, MX, 20, 46, 11);
-    }catch(e){}
+    try{ ctx.drawImage(iconeImg, MX, 20, 46, 11); }catch(e){}
   }
   ctx.fillStyle = TEAL_D;
   ctx.font = fonte(15, '700');
@@ -181,7 +188,6 @@ async function renderPNG(dados, iconeImg) {
   ctx.fillStyle = TEAL_SOFT;
   ctx.font = fonte(18, '700');
   ctx.fillText(String(dados.subtitulo || ''), MX, y + 96);
-  // pill semana + data (canto direito)
   const sem = String(dados.topo.semana || '') + '  ·  ' + String(dados.topo.data || '');
   ctx.font = fonte(15, '700');
   const tw = ctx.measureText(sem).width;
@@ -243,6 +249,8 @@ async function renderPNG(dados, iconeImg) {
   // ---------- áreas ----------
   let nGlobal = 0;
   for (const a of (dados.areas || [])) {
+    if (!cabe(54)) novaPagina();
+
     // banda da área
     ctx.fillStyle = TEAL_BG;
     rr(ctx, MX, y, W - 2 * MX, 44, 10);
@@ -270,14 +278,17 @@ async function renderPNG(dados, iconeImg) {
     y += 54;
 
     if (!pend.length){
+      if (!cabe(46)) novaPagina();
       ctx.fillStyle = MUT;
       ctx.font = fonte(16, '400', 'italic');
       ctx.fillText('Nenhuma pendência registrada.', MX + 6, y + 22);
-      y += 36 + 10;
+      y += 46;
       continue;
     }
 
     for (const p of pend){
+      const hLinha = alturaLinha(ctx, a, p);
+      if (!cabe(hLinha)) novaPagina();
       const st = infoStatus(p);
       const dx = MX + 38 + larguraRef(ctx, a, p);
       let linhas = wrap(ctx, p.desc, fonte(19, '700'), W - MX - dx);
@@ -356,17 +367,18 @@ async function renderPNG(dados, iconeImg) {
     y += 4;
   }
 
-  // ---------- rodapé ----------
-  ctx.fillStyle = TEAL_D;
-  ctx.fillRect(0, H - 116, W, 116);
-  ctx.fillStyle = WHITE;
-  ctx.font = fonte(21, '800');
-  ctx.textAlign = 'center';
-  ctx.fillText(String(dados.rodape1 || ''), W / 2, H - 64);
-  ctx.fillStyle = FOOT_SUB;
-  ctx.font = fonte(15, '700');
-  ctx.fillText(String(dados.rodape2 || ''), W / 2, H - 34);
-  ctx.textAlign = 'left';
-
-  return cv.toDataURL('image/png');
+  // ---------- fechamento e recorte ----------
+  let H;
+  if (modo === 'pdf'){
+    rodape(ctx, dados, pag * PAGE_H - RODAPE_H);
+    H = pag * PAGE_H;
+  } else {
+    rodape(ctx, dados, y);
+    H = y + RODAPE_H;
+  }
+  const out = document.createElement('canvas');
+  out.width = W;
+  out.height = H;
+  out.getContext('2d').drawImage(cv, 0, 0);
+  return {url: out.toDataURL('image/png'), cv: out, pages: pag, pageH: PAGE_H};
 }

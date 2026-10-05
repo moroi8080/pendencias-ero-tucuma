@@ -222,6 +222,7 @@ tr:last-child td{border-bottom:0;}
   font-size:14px;padding:4px 8px;border-radius:6px;flex:0 0 auto;
 }
 .pcard .pdel:hover{background:var(--bad-bg);color:var(--bad-fg);}
+.pcard .pdel.armado{background:var(--bad);color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;}
 .pcard .prow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
 @media(max-width:640px){.pcard .prow2{grid-template-columns:1fr;}}
 .pcard .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0;}
@@ -337,9 +338,10 @@ select.p-baixa{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-fg)
 </main>
 
 <input type="file" id="imp" accept=".json" style="display:none">
+<div id="erro-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99;background:var(--bad-bg);color:var(--bad-fg);font-weight:700;padding:10px 14px;font-size:12.5px;border-top:1px solid var(--bad);"></div>
 
 <script src="jspdf.umd.min.js"></script>
-<script src="render.js?v=1"></script>
-<script src="app.js?v=2"></script>
+<script src="render.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

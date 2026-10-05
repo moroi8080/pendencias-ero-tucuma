@@ -166,7 +166,7 @@ document.addEventListener('click', e=>{
   const del = e.target.closest('.pcard .pdel');
   if (del){
     const card = del.closest('.pcard');
-    delPend(card.dataset.area, card.dataset.id);
+    delPend(card.dataset.area, card.dataset.id, del);
     return;
   }
   const seg = e.target.closest('.pcard .segbtn');
@@ -201,6 +201,12 @@ document.addEventListener('click', e=>{
 });
 
 document.addEventListener('input', e=>{
+  // limpa a mensagem de erro do formulário quando volta a digitar na descrição
+  if (e.target && e.target.id === 'nf-desc'){
+    const msg = document.getElementById('nf-msg');
+    if (msg){ msg.style.display = 'none'; }
+    e.target.style.outline = '';
+  }
   const inp = e.target.closest('[data-campo]');
   if (!inp) return;
   const card = inp.closest('.pcard');
@@ -210,6 +216,13 @@ document.addEventListener('input', e=>{
   p[inp.dataset.campo] = inp.value;
   agendarSalvar();
   if (inp.dataset.campo==='data' || inp.dataset.campo==='prazo' || inp.dataset.campo==='status') atualizarCardVisual(card);
+});
+
+document.addEventListener('keydown', e=>{
+  if (e.key === 'Enter' && e.target && e.target.id === 'nf-desc'){
+    e.preventDefault();
+    addPend(pagina);
+  }
 });
 
 document.addEventListener('change', e=>{
@@ -310,14 +323,14 @@ function renderArea(k){
   const form = `<div class="card">
     <h2>Nova pendência — ${a.nome}</h2>
     <div class="prow1" style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="text" id="nf-desc" placeholder="Descrição da pendência..." style="flex:1;font-weight:700;font-size:14px;">
+      <input type="text" id="nf-desc" placeholder="O QUE ESTÁ PENDENTE — ex.: vazamento na bomba de polpa" style="flex:1;font-weight:700;font-size:14px;">
     </div>
     <div class="prow2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <label>Data<input type="date" id="nf-data" value="${isoHoje()}"></label>
       <label>Prazo (opcional)<input type="date" id="nf-prazo"></label>
     </div>
     <div class="prow2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-      <label>Equipamento / TAG<input type="text" id="nf-tag" placeholder="ex.: CR-002"></label>
+      <label>Equipamento / TAG (opcional)<input type="text" id="nf-tag" placeholder="ex.: CR-002"></label>
       <label>Responsável
         <select id="nf-resp">
           ${RESP.map(r=>`<option value="${r}" ${r===''?'selected':''}>${r||'— (sem responsável)'}</option>`).join('')}
@@ -337,7 +350,8 @@ function renderArea(k){
         <option value="baixa">BAIXA</option>
       </select>
     </label>
-    <label style="margin-top:10px;">Observação<textarea id="nf-obs" placeholder="Detalhes, andamento, responsável..."></textarea></label>
+    <label style="margin-top:10px;">Observação<textarea id="nf-obs" placeholder="Detalhes, andamento..."></textarea></label>
+    <div id="nf-msg" style="display:none;color:var(--bad-fg);font-weight:700;font-size:12.5px;margin-top:10px;background:var(--bad-bg);border:1px solid var(--bad);border-radius:8px;padding:8px 10px;"></div>
     <div class="btnrow" style="margin-top:10px;">
       <button class="btn prim" onclick="addPend('${k}')">➕ Adicionar pendência</button>
     </div>
@@ -430,14 +444,24 @@ function atualizarCardVisual(card){
 }
 
 function addPend(k){
-  const desc = document.getElementById('nf-desc').value.trim();
-  if (!desc){ alert('Descreva a pendência antes de adicionar.'); return; }
+  const inpDesc = document.getElementById('nf-desc');
+  const desc = inpDesc.value.trim();
+  const tag = document.getElementById('nf-tag').value.trim();
+  const obs = document.getElementById('nf-obs').value.trim();
+  if (!desc){
+    const msg = document.getElementById('nf-msg');
+    msg.style.display = '';
+    msg.textContent = (tag || obs)
+      ? 'Falta a DESCRIÇÃO no primeiro campo ("O QUE ESTÁ PENDENTE"). O que você digitou em TAG/Observação não conta como descrição — copie para o primeiro campo.'
+      : 'Preencha a DESCRIÇÃO (primeiro campo) para adicionar a pendência.';
+    inpDesc.style.outline = '2px solid var(--bad)';
+    inpDesc.focus();
+    return;
+  }
   const data = document.getElementById('nf-data').value || isoHoje();
   const prazo = document.getElementById('nf-prazo').value;
-  const tag = document.getElementById('nf-tag').value.trim();
   const resp = document.getElementById('nf-resp').value;
   const prio = document.getElementById('nf-prio').value;
-  const obs = document.getElementById('nf-obs').value.trim();
   const lista = pendDe(k);
   const num = lista.reduce((m,p)=>Math.max(m, p.num||0), 0) + 1;
   const status = novaStatus[k];
@@ -450,8 +474,21 @@ function addPend(k){
   renderArea(k);
 }
 
-function delPend(k, id){
-  if (!confirm('Excluir esta pendência?')) return;
+function delPend(k, id, btn){
+  // exclusão com duplo toque (alert/confirm não aparecem em PWA instalado)
+  if (btn && btn.dataset.armado !== '1'){
+    btn.dataset.armado = '1';
+    btn.textContent = 'Excluir?';
+    btn.classList.add('armado');
+    setTimeout(()=>{
+      if (btn.dataset.armado === '1'){
+        btn.dataset.armado = '';
+        btn.textContent = '✕';
+        btn.classList.remove('armado');
+      }
+    }, 3000);
+    return;
+  }
   S.areas[k].pend = pendDe(k).filter(p=>p.id!==id);
   salvarLocal();
   renderArea(k);
@@ -487,8 +524,9 @@ function renderRelatorios(){
           <div class="btnrow">
             <button class="btn outline" onclick="exportarJSON()">⬇️ Exportar JSON</button>
             <button class="btn outline" onclick="document.getElementById('imp').click()">⬆️ Importar JSON</button>
-            <button class="btn danger" onclick="resetPadrao()">↺ Restaurar padrão</button>
+            <button class="btn danger" onclick="resetPadrao(this)">↺ Restaurar padrão</button>
           </div>
+          <div id="imp-banner" style="display:none;margin-top:10px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:8px;padding:8px 10px;font-size:12.5px;font-weight:700;color:var(--warn-fg);"></div>
           <p style="font-size:12px;color:hsl(var(--muted-foreground));margin-top:10px;">O backup dos dados fica no navegador (localStorage). <span id="ult"></span></p>
         </div>
       </div>
@@ -503,40 +541,45 @@ function renderRelatorios(){
 
 async function gerarPreview(){
   try{
-    const url = await renderPNG(dadosRelatorio(), icone);
+    const r = await renderPNG(dadosRelatorio(), icone, 'png');
     const img = document.getElementById('pv');
-    img.src = url;
+    img.src = r.url;
     img.classList.add('show');
-  }catch(e){ console.error('Preview:', e); }
-}
-
-function baixarDados(cv){
-  const a = document.createElement('a');
-  a.href = cv.toDataURL('image/png');
-  a.download = 'pendencias_ero_' + isoHoje() + '.png';
-  a.click();
+  }catch(e){ mostrarErro('Erro no preview: ' + e.message); }
 }
 
 async function baixarPNG(){
   try{
-    const url = await renderPNG(dadosRelatorio(), icone);
+    const r = await renderPNG(dadosRelatorio(), icone, 'png');
     const a = document.createElement('a');
-    a.href = url;
+    a.href = r.url;
     a.download = 'pendencias_ero_' + isoHoje() + '.png';
     a.click();
-  }catch(e){ alert('Erro ao gerar PNG: ' + e.message); }
+  }catch(e){ mostrarErro('Erro ao gerar PNG: ' + e.message); }
 }
 
 async function baixarPDF(){
   try{
-    const url = await renderPNG(dadosRelatorio(), icone);
-    const img = new Image();
-    await new Promise((ok, err)=>{ img.onload=ok; img.onerror=err; img.src=url; });
+    // paginação A4: cada página do canvas vira uma página A4 do PDF
+    // compression 'SLOW': sem isso o jsPDF grava PNG cru (13 MB!)
+    const r = await renderPNG(dadosRelatorio(), icone, 'pdf');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({orientation:'portrait', unit:'px', format:[img.width, img.height], hotfixes:['px_scaling']});
-    pdf.addImage(img, 'PNG', 0, 0, img.width, img.height);
+    const pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+    for (let i = 0; i < r.pages; i++){
+      if (i > 0) pdf.addPage();
+      const slice = document.createElement('canvas');
+      slice.width = W;
+      slice.height = r.pageH;
+      slice.getContext('2d').drawImage(r.cv, 0, i * r.pageH, W, r.pageH, 0, 0, W, r.pageH);
+      pdf.addImage(slice.toDataURL('image/png'), 'PNG', 0, 0, 595.28, 841.89, undefined, 'SLOW');
+    }
     pdf.save('pendencias_ero_' + isoHoje() + '.pdf');
-  }catch(e){ alert('Erro ao gerar PDF: ' + e.message); }
+  }catch(e){ mostrarErro('Erro ao gerar PDF: ' + e.message); }
+}
+
+function mostrarErro(txt){
+  const b = document.getElementById('erro-banner');
+  if (b){ b.style.display = ''; b.textContent = txt; }
 }
 
 function exportarJSON(){
@@ -547,11 +590,38 @@ function exportarJSON(){
   a.click();
 }
 
-function resetPadrao(){
-  if (!confirm('Restaurar os dados padrão? Suas alterações serão perdidas.')) return;
+let resetArmado = null;
+function resetPadrao(btn){
+  // duplo toque (confirm() não aparece em PWA instalado)
+  if (!resetArmado || resetArmado !== btn){
+    resetArmado = btn;
+    btn.textContent = 'Tem certeza? Toque de novo';
+    setTimeout(()=>{
+      if (resetArmado === btn){
+        resetArmado = null;
+        btn.textContent = '↺ Restaurar padrão';
+      }
+    }, 4000);
+    return;
+  }
+  resetArmado = null;
   S = JSON.parse(JSON.stringify(DADOS_PADRAO));
   salvarLocal();
   renderPagina();
+}
+
+let importPendente = null;
+function aplicarImport(){
+  if (!importPendente) return;
+  S = migrar(importPendente);
+  importPendente = null;
+  document.getElementById('imp-banner').style.display = 'none';
+  salvarLocal();
+  renderPagina();
+}
+function cancelarImport(){
+  importPendente = null;
+  document.getElementById('imp-banner').style.display = 'none';
 }
 
 document.getElementById('imp').addEventListener('change', function(){
@@ -562,14 +632,32 @@ document.getElementById('imp').addEventListener('change', function(){
     try{
       const d = JSON.parse(r.result);
       if (!d.areas || !d.areas.britagem || !d.areas.moagem || !d.areas.flotacao) throw new Error('formato');
-      if (!confirm('Substituir os dados atuais pelos do arquivo?')) return;
-      S = migrar(d);
-      salvarLocal();
-      renderPagina();
-    }catch(e){ alert('Arquivo inválido — use um JSON exportado por este app.'); }
+      importPendente = d;
+      const b = document.getElementById('imp-banner');
+      b.style.display = '';
+      b.innerHTML = 'Arquivo lido. Substituir os dados atuais? '
+        + '<button class="btn prim mini" onclick="aplicarImport()">Aplicar</button> '
+        + '<button class="btn ghost mini" onclick="cancelarImport()">Cancelar</button>';
+    }catch(e){
+      importPendente = null;
+      const b = document.getElementById('imp-banner');
+      b.style.display = '';
+      b.textContent = 'Arquivo inválido — use um JSON exportado por este app.';
+    }
   };
   r.readAsText(f);
   this.value = '';
+});
+
+// banner de erro visível (para diagnóstico no celular)
+window.addEventListener('error', ev=>{
+  try{
+    const b = document.getElementById('erro-banner');
+    if (b){
+      b.style.display = '';
+      b.textContent = 'Erro: ' + (ev.message || 'desconhecido') + ' — tire um print e envie.';
+    }
+  }catch(e){}
 });
 
 // ---------- ícone ----------
