@@ -470,13 +470,39 @@ function addPend(k){
   const lista = pendDe(k);
   const num = lista.reduce((m,p)=>Math.max(m, p.num||0), 0) + 1;
   const status = novaStatus[k];
-  lista.push({
+  const novo = {
     id: 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
     num, tag, desc, data, prazo, status, prio, resp, obs,
     concluido_em: status === 'concluida' ? data : ''
-  });
+  };
+  lista.push(novo);
   salvarLocal();
+  // garante que a pendência nova fique visível: filtro em "Todas",
+  // rola até o card e pisca em destaque
+  filtros[k] = 'todas';
   renderArea(k);
+  const card = contArea(k).querySelector('.pcard[data-id="' + novo.id + '"]');
+  if (card){
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    card.classList.add('flash');
+    setTimeout(()=>card.classList.remove('flash'), 2600);
+  }
+  toast('✓ ' + numTxt(k, novo) + ' adicionada');
+}
+
+let tToast = null;
+function toast(txt){
+  let el = document.getElementById('toast');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.style.cssText = 'position:fixed;bottom:calc(74px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);z-index:80;background:hsl(var(--primary));color:hsl(var(--primary-foreground));padding:9px 16px;border-radius:999px;font-size:13px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;transition:opacity .25s;white-space:nowrap;';
+    document.body.appendChild(el);
+  }
+  el.textContent = txt;
+  el.style.opacity = '1';
+  clearTimeout(tToast);
+  tToast = setTimeout(()=>{ el.style.opacity = '0'; }, 2600);
 }
 
 function delPend(k, id, btn){

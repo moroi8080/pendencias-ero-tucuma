@@ -256,6 +256,13 @@ select.p-alta{background:var(--bad-bg);border-color:var(--bad);color:var(--bad-f
 select.p-media{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-fg);}
 select.p-baixa{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-fg);}
 
+/* card recém-adicionado pisca em destaque */
+.pcard.flash{animation:pcardflash 1.2s ease 2;}
+@keyframes pcardflash{
+  0%{box-shadow:0 0 0 3px hsl(var(--primary) / .55);}
+  100%{box-shadow:0 0 0 3px transparent;}
+}
+
 /* página Relatórios: layout do editor antigo (formulário + preview) */
 .rel-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start;}
 @media(max-width:1000px){.rel-grid{grid-template-columns:1fr;}}
@@ -307,7 +314,7 @@ select.p-baixa{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-fg)
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
     Relatórios
   </button>
-  <div class="rodape">Controle de Pendências<br>BRITAGEM · MOAGEM · FLOTAÇÃO<br>© 2026 · Matheus Melo · ERO TUCUMÃ</div>
+  <div class="rodape">Controle de Pendências<br>BRITAGEM · MOAGEM · FLOTAÇÃO<br>© 2026 · Matheus Melo · ERO TUCUMÃ<br><span style="opacity:.7">versão 5</span></div>
 </aside>
 
 <main id="main">
@@ -342,6 +349,6 @@ select.p-baixa{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-fg)
 
 <script src="jspdf.umd.min.js"></script>
 <script src="render.js?v=2"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
