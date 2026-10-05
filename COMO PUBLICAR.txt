@@ -1,0 +1,31 @@
+COMO PUBLICAR — Pendências ERO (GitHub Pages)
+================================================
+
+Repo: https://github.com/moroi8080/pendencias-ero-tucuma (branch main)
+URL:  https://moroi8080.github.io/pendencias-ero-tucuma/
+
+1) Testar local:
+   cd ero-pendencias
+   python -m http.server 8899
+   → abrir http://localhost:8899
+
+2) Publicar (com gh logado):
+   git add -A
+   git commit -m "mensagem"
+   git push origin main
+
+   O GitHub Pages serve a raiz do branch main (configurado na
+   primeira publicação — não precisa de workflow).
+
+3) ATENÇÃO — cache-busting:
+   GitHub Pages manda Cache-Control: max-age=600. Sempre que mudar
+   o app.js, bumbar a versão no index.html:
+       <script src="app.js?v=2"></script>
+   Senão o celular mostra versão velha por ~10 min.
+
+4) Estrutura:
+   index.html      shell + CSS
+   app.js          lógica e telas
+   render.js       geração do PNG do relatório (canvas)
+   jspdf.umd.min.js  PDF (jsPDF)
+   manifest.webmanifest + ícones  PWA (instalar no celular)
