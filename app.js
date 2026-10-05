@@ -591,20 +591,9 @@ async function baixarPNG(){
 
 async function baixarPDF(){
   try{
-    // paginação A4: cada página do canvas vira uma página A4 do PDF
-    // compression 'SLOW': sem isso o jsPDF grava PNG cru (13 MB!)
-    const r = await renderPNG(dadosRelatorio(), icone, 'pdf');
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
-    for (let i = 0; i < r.pages; i++){
-      if (i > 0) pdf.addPage();
-      const slice = document.createElement('canvas');
-      slice.width = W;
-      slice.height = r.pageH;
-      slice.getContext('2d').drawImage(r.cv, 0, i * r.pageH, W, r.pageH, 0, 0, W, r.pageH);
-      pdf.addImage(slice.toDataURL('image/png'), 'PNG', 0, 0, 595.28, 841.89, undefined, 'SLOW');
-    }
-    pdf.save('pendencias_ero_' + isoHoje() + '.pdf');
+    // PDF vetorial nativo (texto real, A4, quebra por linha) — ver render.js
+    const doc = gerarPDF(dadosRelatorio());
+    doc.save('pendencias_ero_' + isoHoje() + '.pdf');
   }catch(e){ mostrarErro('Erro ao gerar PDF: ' + e.message); }
 }
 

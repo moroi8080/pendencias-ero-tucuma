@@ -382,3 +382,280 @@ async function renderPNG(dados, iconeImg, modo) {
   out.getContext('2d').drawImage(cv, 0, 0);
   return {url: out.toDataURL('image/png'), cv: out, pages: pag, pageH: PAGE_H};
 }
+
+// ============================================================
+// PDF VETORIAL nativo (jsPDF) — texto real, A4 com margens,
+// quebra de página por linha. Substitui a versão em imagem.
+// ============================================================
+
+const P = {   // geometria A4 em pontos (595.28 x 841.89)
+  margem: 42,
+  larg: 595.28 - 84,            // 511.28
+  topo: 52,
+  bandaAlt: 78,
+  rodapeAlt: 40
+};
+
+function rgbHex(h){ const n=parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+// remove caracteres fora do WinAnsi (emoji etc.) para o texto do PDF
+function limparPDF(s){ return String(s==null?'':s).replace(/[^\x20-\x7E -ÿ]/g,'?'); }
+
+function gerarPDF(dados){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+  const AH = 841.89;
+  let y = 0;
+  let pag = 1;
+  const limite = () => AH - P.rodapeAlt - 24;
+
+  const teal    = rgbHex('#00727A');
+  const tealD   = rgbHex('#00545B');
+  const tealS   = rgbHex('#BFF6F0');
+  const tealBg  = rgbHex('#EBF4F4');
+  const ink     = rgbHex('#1F2937');
+  const mut     = rgbHex('#4B5563');
+  const corDe   = {verde:rgbHex('#1E9E4F'), amarelo:rgbHex('#E8A33D'), vermelho:rgbHex('#D64545'), azul:rgbHex('#2F7FD1')};
+  function cor(ch){ return corDe[ch] || corDe.verde; }
+
+  function tintRGB(c, f=0.14){
+    return [Math.round(c[0]*f+255*(1-f)), Math.round(c[1]*f+255*(1-f)), Math.round(c[2]*f+255*(1-f))];
+  }
+
+  function rodape(){
+    doc.setFillColor(...tealD);
+    doc.rect(0, AH - P.rodapeAlt, 595.28, P.rodapeAlt, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.text(limparPDF(dados.rodape1||''), 595.28/2, AH - 23, {align:'center'});
+    doc.setTextColor(158,198,196);
+    doc.setFontSize(7);
+    doc.text(limparPDF(dados.rodape2||''), 595.28/2, AH - 12, {align:'center'});
+  }
+
+  function novaPagina(){
+    rodape();
+    doc.addPage();
+    pag++;
+    y = 26;
+    doc.setTextColor(...tealD);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8.5);
+    doc.text('RELATÓRIO DE PENDÊNCIAS — ERO TUCUMÃ', P.margem, y);
+    doc.setTextColor(...mut);
+    doc.setFontSize(7.5);
+    doc.text('PÁGINA ' + pag, 595.28 - P.margem, y, {align:'right'});
+    y += 20;
+  }
+
+  function cabe(h){ return y + h <= limite(); }
+
+  // ---------- cabeçalho da página 1 ----------
+  doc.setTextColor(...tealD);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.text(limparPDF(dados.topo.rotulo1||'ERO TUCUMÃ'), P.margem, 34);
+  doc.setTextColor(...mut);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7.5);
+  doc.text(limparPDF(dados.topo.rotulo2||'SALA DE CONTROLE'), P.margem, 44);
+  doc.setFont('helvetica','bold');
+  doc.setTextColor(...ink);
+  doc.text(limparPDF(dados.topo.data||''), 595.28 - P.margem, 34, {align:'right'});
+
+  // faixa do título
+  doc.setFillColor(...tealD);
+  doc.rect(0, P.topo, 595.28, P.bandaAlt, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(21);
+  doc.text(limparPDF(dados.titulo||'RELATÓRIO DE PENDÊNCIAS'), P.margem, P.topo + 38);
+  doc.setTextColor(...tealS);
+  doc.setFontSize(10.5);
+  doc.text(limparPDF(dados.subtitulo||''), P.margem, P.topo + 56);
+  const sem = limparPDF((dados.topo.semana||'') + '  ·  ' + (dados.topo.data||''));
+  doc.setFontSize(8.5);
+  const sw = doc.getTextWidth(sem);
+  doc.setFillColor(255,255,255);
+  doc.setGState(new doc.GState({opacity:.16}));
+  doc.roundedRect(595.28 - P.margem - sw - 22, P.topo + 14, sw + 22, 18, 9, 9, 'F');
+  doc.setGState(new doc.GState({opacity:1}));
+  doc.setTextColor(255,255,255);
+  doc.text(sem, 595.28 - P.margem - sw - 11, P.topo + 26);
+
+  y = P.topo + P.bandaAlt;
+
+  // slogan
+  if (dados.slogan){
+    doc.setTextColor(...mut);
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(8);
+    doc.text(limparPDF(dados.slogan), 595.28/2, y + 18, {align:'center'});
+    y += 30;
+  }
+
+  // ---------- resumo de KPIs ----------
+  let kTot=0, kAb=0, kAtr=0, kConc=0;
+  for (const a of (dados.areas||[]))
+    for (const p of (a.pend||[])){
+      kTot++;
+      if (p.status==='concluida') kConc++; else kAb++;
+      if (atrasada(p)) kAtr++;
+    }
+  const kpis = [
+    {lbl:'TOTAL', v:kTot, c:ink},
+    {lbl:'ABERTAS', v:kAb, c:corDe.amarelo},
+    {lbl:'ATRASADAS', v:kAtr, c:corDe.vermelho},
+    {lbl:'CONCLUÍDAS', v:kConc, c:corDe.verde}
+  ];
+  const bw = (P.larg - 3*10) / 4;
+  kpis.forEach((k,i)=>{
+    const bx = P.margem + i*(bw+10);
+    doc.setDrawColor(229,231,235);
+    doc.setLineWidth(.8);
+    doc.roundedRect(bx, y, bw, 40, 5, 5, 'S');
+    doc.setTextColor(...k.c);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(15);
+    doc.text(String(k.v), bx + 10, y + 21);
+    doc.setTextColor(...mut);
+    doc.setFontSize(6.5);
+    doc.text(k.lbl, bx + 10, y + 33);
+  });
+  y += 40 + 16;
+
+  // rótulo da seção
+  doc.setTextColor(...mut);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.text('PENDÊNCIAS POR ÁREA', P.margem, y);
+  y += 12;
+
+  // ---------- áreas ----------
+  let nGlobal = 0;
+  for (const a of (dados.areas||[])){
+    if (!cabe(30)) novaPagina();
+
+    // banda da área
+    doc.setFillColor(...tealBg);
+    doc.roundedRect(P.margem, y, P.larg, 26, 4, 4, 'F');
+    doc.setTextColor(...tealD);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11.5);
+    doc.text(limparPDF(String(a.nome||'').toUpperCase()), P.margem + 10, y + 17.5);
+
+    const pend = a.pend||[];
+    let ab=0, cc=0, at=0;
+    for (const p of pend){ if (p.status==='concluida') cc++; else ab++; if (atrasada(p)) at++; }
+    const resumo = pend.length
+      ? `${ab} ABERTA${ab===1?'':'S'} · ${cc} CONCLUÍDA${cc===1?'':'S'}${at? ' · '+at+' ATRASADA'+(at===1?'':'S'):''}`
+      : 'SEM REGISTROS';
+    doc.setFontSize(7.5);
+    const rw = doc.getTextWidth(resumo);
+    doc.setFillColor(...teal);
+    doc.roundedRect(595.28 - P.margem - rw - 20, y + 3.5, rw + 20, 19, 9.5, 9.5, 'F');
+    doc.setTextColor(255,255,255);
+    doc.text(resumo, 595.28 - P.margem - rw - 10, y + 16);
+    y += 26 + 8;
+
+    if (!pend.length){
+      if (!cabe(20)) novaPagina();
+      doc.setTextColor(...mut);
+      doc.setFont('helvetica','italic');
+      doc.setFontSize(8);
+      doc.text('Nenhuma pendência registrada.', P.margem + 4, y + 12);
+      y += 20 + 8;
+      continue;
+    }
+
+    for (const p of pend){
+      const st = infoStatus(p);
+      const stCor = cor(st.cor);
+      const ref = limparPDF(refTxt(a, p));
+
+      // altura estimada da linha
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(10);
+      const refW = ref ? doc.getTextWidth(ref) + 8 : 0;
+      const descLinhas = doc.splitTextToSize(limparPDF(p.desc), P.larg - 24 - refW);
+      const desc2 = descLinhas.slice(0,2);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      const obsLinhas = doc.splitTextToSize(limparPDF(p.obs), P.larg - 24);
+      const obs2 = obsLinhas.slice(0,2);
+      if (obs2.length===2) obs2[1] = obs2[1].replace(/\s+$/,'') + '…';
+      const hLinha = 8 + desc2.length*13 + 12 + 4 + obs2.length*10.5 + 12;
+
+      if (!cabe(hLinha)) novaPagina();
+
+      const rowTop = y + 6;
+      nGlobal++;
+
+      // número
+      doc.setFillColor(...teal);
+      doc.circle(P.margem + 7, rowTop + 8, 7, 'F');
+      doc.setTextColor(255,255,255);
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(7);
+      doc.text(String(nGlobal), P.margem + 7, rowTop + 10.5, {align:'center'});
+
+      // referência + descrição
+      const dx = P.margem + 22;
+      let ddx = dx;
+      if (ref){
+        doc.setTextColor(...teal);
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(9.5);
+        doc.text(ref, ddx, rowTop + 10.5);
+        ddx += doc.getTextWidth(ref) + 8;
+      }
+      doc.setTextColor(...(p.status==='concluida' ? mut : ink));
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(10);
+      let dy = rowTop + 10.5;
+      for (const l of desc2){ doc.text(l, ddx, dy); dy += 13; }
+
+      // meta + pill de status
+      const metaY = dy + 2;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...mut);
+      let meta = 'DATA ' + isoToBR(p.data);
+      if (p.status==='concluida') meta += '   ·   CONCLUÍDA EM ' + isoToBR(p.concluido_em||p.data);
+      else if (p.prazo) meta += '   ·   PRAZO ' + isoToBR(p.prazo);
+      if (p.resp) meta += '   ·   RESP ' + limparPDF(p.resp);
+      doc.text(meta, dx, metaY + 10);
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(7.5);
+      const pw = doc.getTextWidth(st.txt);
+      const t = tintRGB(stCor);
+      doc.setFillColor(...t);
+      doc.setDrawColor(...stCor);
+      doc.setLineWidth(1);
+      doc.roundedRect(595.28 - P.margem - pw - 16, metaY, pw + 16, 15, 7.5, 7.5, 'FD');
+      doc.setTextColor(...stCor);
+      doc.text(st.txt, 595.28 - P.margem - pw - 8, metaY + 10.5);
+
+      // observação
+      let oy = metaY + 15 + 6;
+      if (p.obs){
+        doc.setTextColor(...mut);
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(8);
+        for (const l of obs2){ doc.text(l, dx, oy); oy += 10.5; }
+      }
+
+      y = oy + 6;
+      doc.setDrawColor(31,41,55);
+      doc.setGState(new doc.GState({opacity:.08}));
+      doc.setLineWidth(.7);
+      doc.line(P.margem, y, 595.28 - P.margem, y);
+      doc.setGState(new doc.GState({opacity:1}));
+      y += 8;
+    }
+  }
+
+  rodape();
+  return doc;
+}
